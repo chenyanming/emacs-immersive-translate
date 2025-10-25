@@ -16,12 +16,18 @@
 ;;; Code:
 
 (require 'dom)
+(require 'subr-x)
+(require 'cl-lib)
 (require 'auth-source)
 (require 'text-property-search)
 (require 'immersive-translate-baidu)
 (require 'immersive-translate-chatgpt)
+(require 'immersive-translate-gptel)
 (require 'immersive-translate-trans)
 (require 'immersive-translate-deepl)
+
+(declare-function gptel-fsm-info "gptel-request" (fsm))
+(declare-function gptel-abort "gptel-request" (buf))
 
 
 
@@ -39,6 +45,7 @@
   "The translation backend to use.
 
 The current options are
+- gptel
 - chatgpt
 - baidu
 - trans
@@ -46,11 +53,13 @@ The current options are
   :group 'immersive-translate
   :type '(choice
           (const :tag "ChatGPT" chatgpt)
+          (const :tag "gptel" gptel)
           (const :tag "Baidu" baidu)
           (const :tag "translate-shell" trans)))
 
 (defcustom immersive-translate-backend-alist
   '((baidu . immersive-translate-baidu-translate)
+    (gptel . immersive-translate-gptel-translate)
     (chatgpt . immersive-translate-chatgpt-translate)
     (trans . immersive-translate-trans-translate)
     (deepl . immersive-translate-deepl-translate))
@@ -506,19 +515,33 @@ Nil otherwise."
 (defun immersive-translate-abort (buf)
   "Stop all active immersive-translate processes in BUF."
   (interactive (list (current-buffer)))
-  (if-let* ((proc-attrs
-             (cl-remove-if-not
-              (lambda (proc-list)
-                (eq (plist-get (cdr proc-list) :buffer) buf))
-              immersive-translate--process-alist)))
+  (let ((stopped nil))
+    (when-let* ((proc-attrs
+                 (cl-remove-if-not
+                  (lambda (proc-list)
+                    (eq (plist-get (cdr proc-list) :buffer) buf))
+                  immersive-translate--process-alist)))
+      (setq stopped t)
       (dolist (proc-attr proc-attrs)
         (let ((proc (car proc-attr)))
           (setf (alist-get proc immersive-translate--process-alist nil 'remove) nil)
           (set-process-sentinel proc #'ignore)
           (delete-process proc)
           (kill-buffer (process-buffer proc))
-          (message "Stopped all immersive-translate processes in buffer %S" (buffer-name buf))))
-    (message "No immersive-translate process associated with buffer %S" (buffer-name buf))))
+          (message "Stopped all immersive-translate processes in buffer %S"
+                   (buffer-name buf)))))
+    (when (and (fboundp 'gptel-abort)
+               (boundp 'gptel--request-alist)
+               (cl-find-if
+                (lambda (entry)
+                  (eq (plist-get (gptel-fsm-info (cadr entry)) :buffer)
+                      buf))
+                gptel--request-alist))
+      (setq stopped t)
+      (gptel-abort buf))
+    (unless stopped
+      (message "No immersive-translate process associated with buffer %S"
+               (buffer-name buf)))))
 
 (cl-defun immersive-translate-do-translate
     (&optional content &key callback
@@ -611,9 +634,10 @@ of `immersive-translate-backend' is used."
     (unless (immersive-translate-disable-p)
       (when-let* ((paragraph (immersive-translate-join-lin
                               (immersive-translate--get-paragraph)))
-                  (content (if (eq immersive-translate-backend 'chatgpt)
-                               (immersive-translate-chatgpt-create-prompt paragraph)
-                             paragraph))
+                  (content (pcase immersive-translate-backend
+                             ('chatgpt (immersive-translate-chatgpt-create-prompt paragraph))
+                             ('gptel (immersive-translate-gptel-create-prompt paragraph))
+                             (_ paragraph)))
                   (ov t))
         (immersive-translate-end-of-paragraph)
         (if (immersive-translate--cache-p content)

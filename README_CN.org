@@ -26,6 +26,9 @@
   ;; (setq immersive-translate-backend 'chatgpt
   ;;       immersive-translate-chatgpt-host "api.openai.com")
 
+  ;; use gptel
+  ;; (setq immersive-translate-backend 'gptel)
+
   ;; use translate-shell
   ;; (setq immersive-translate-backend 'trans)
 
@@ -59,6 +62,7 @@
   所使用的翻译后端。详见 [[#api_key][API 密钥设置]] 一节。
 
   目前可用的翻译服务
+  - gptel (https://github.com/karthink/gptel)
   - chatgpt (https://openai.com/api/)
   - baidu (https://fanyi-api.baidu.com/)
   - translate-shell (https://github.com/soimort/translate-shell)
@@ -104,7 +108,11 @@
 
 此插件通过内置的 =auth-source.el= 来获取用户的密钥：
 
-1. ChatGPT
+1. gptel
+
+   此后端依赖 [[https://github.com/karthink/gptel][gptel]] 包提供的后端与鉴权配置。按常规方式配置 gptel（设置 `gptel-backend`、API 密钥等），然后将 `immersive-translate-backend` 设为 `gptel` 即可使用。
+
+2. ChatGPT
    
    假设您的 =immersive-translate-chatgpt-host= 为 "api.openai.com" , API 密钥为
    123456 。则在 =~/.authinfo= 中添加如下文本：
@@ -112,7 +120,7 @@
   machine api.openai.com login apikey password 123456
   #+end_example
   
-2. 百度翻译
+3. 百度翻译
    
    假设您的 =immersive-translate-baidu-appid= 为 "foobar" ，API 密钥为123456 。则在
    =~/.authinfo= 中添加如下文本：

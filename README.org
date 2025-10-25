@@ -29,6 +29,9 @@ Inspired by [[https://github.com/immersive-translate/immersive-translate][immers
   ;; (setq immersive-translate-backend 'chatgpt
   ;;       immersive-translate-chatgpt-host "api.openai.com")
 
+  ;; use gptel
+  ;; (setq immersive-translate-backend 'gptel)
+
   ;; use translate-shell
   ;; (setq immersive-translate-backend 'trans)
 
@@ -61,6 +64,7 @@ Inspired by [[https://github.com/immersive-translate/immersive-translate][immers
   The translation backend used. See [[#api_key][API setting]] for details.
 
   Currently available translation services:
+  - gptel (https://github.com/karthink/gptel)
   - chatgpt (https://openai.com/api/)
   - baidu (https://fanyi-api.baidu.com/)
   - translate-shell (https://github.com/soimort/translate-shell)
@@ -103,7 +107,11 @@ The translation service of this plugin requires you to apply for the correspondi
 
 This plugin retrieves the user's key through the built-in =auth-source.el=.
 
-1. ChatGPT
+1. gptel
+
+   This backend relies on the [[https://github.com/karthink/gptel][gptel]] package for authentication and backend configuration.  Configure gptel as usual (set `gptel-backend`, API keys, etc.), then set `immersive-translate-backend` to `gptel`.
+
+2. ChatGPT
    
    Assuming your =immersive-translate-chatgpt-host= is "api.openai.com" and the API key is 123456, add the following text to =~/.authinfo=:
    
@@ -111,7 +119,7 @@ This plugin retrieves the user's key through the built-in =auth-source.el=.
     machine api.openai.com login apikey password 123456
   #+end_example
   
-2. Baidu Translate
+3. Baidu Translate
    
    Assuming your =immersive-translate-baidu-appid= is "foobar" and the API key is 123456, add the following text to =~/.authinfo=:
   #+begin_example
